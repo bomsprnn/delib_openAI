@@ -68,6 +68,7 @@ public class LetterService {
             questionBuilder.append("반말로 작성해줘.");
 
         }
+
         if (requestDto.getDetail() != null && !requestDto.getDetail().isEmpty()) {
             questionBuilder.append(requestDto.getDetail()).append(" 부탁해.");
         }

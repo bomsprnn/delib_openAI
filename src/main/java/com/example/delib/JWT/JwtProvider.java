@@ -45,6 +45,7 @@ public class JwtProvider {
                 .setSubject(authentication.getName())
                 .claim("auth", authorities)
                 .setExpiration(accessTokenExpiresIn)
+                .setIssuedAt(new Date(now))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 
@@ -100,6 +101,7 @@ public class JwtProvider {
         }
         return false;
     }
+
 
 
     // accessToken
