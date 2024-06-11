@@ -1,5 +1,7 @@
 package com.example.delib.JWT;
 
+import com.example.delib.domain.Member;
+import com.example.delib.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
@@ -12,22 +14,31 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
+import java.util.Date;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends GenericFilterBean {
     private final JwtProvider jwtProvider;
+    private final MemberRepository memberRepository;
 
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        // 1. Request Header에서 JWT 토큰 추출
         String token = resolveToken((HttpServletRequest) request);
 
-        // 2. validateToken으로 토큰 유효성 검사
         if (token != null && jwtProvider.validateToken(token)) {
-            // 토큰이 유효할 경우 토큰에서 Authentication 객체를 가지고 와서 SecurityContext에 저장
             Authentication authentication = jwtProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            String username = authentication.getName();
+            Optional<Member> memberOpt = memberRepository.findByUsername(username);
+            if (memberOpt.isPresent()) {
+                Member member = memberOpt.get();
+                Date tokenIssuedAt = jwtProvider.getIssuedAt(token);
+                if (member.getLastLogout() == null || tokenIssuedAt.after(member.getLastLogout())) {
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
         }
         chain.doFilter(request, response);
     }

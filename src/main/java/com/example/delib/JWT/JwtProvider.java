@@ -5,6 +5,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,17 +18,20 @@ import java.security.Key;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 public class JwtProvider {
     private final Key key;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // application.yml에서 secret 값 가져와서 key에 저장
-    public JwtProvider(@Value("${jwt.secret}") String secretKey) {
+    public JwtProvider(@Value("${jwt.secret}") String secretKey, RedisTemplate<String, Object> redisTemplate) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
+        this.redisTemplate = redisTemplate;
     }
 
     // Member 정보를 가지고 AccessToken, RefreshToken을 생성하는 메서드
@@ -89,7 +93,7 @@ public class JwtProvider {
                     .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token);
-            return true;
+            return !isTokenLoggedOut(token);
         } catch (SecurityException | MalformedJwtException e) {
             log.info("Invalid JWT Token", e);
         } catch (ExpiredJwtException e) {
@@ -102,7 +106,9 @@ public class JwtProvider {
         return false;
     }
 
-
+    private boolean isTokenLoggedOut(String token) {
+        return redisTemplate.opsForValue().get(token) != null;
+    }
 
     // accessToken
     private Claims parseClaims(String accessToken) {
@@ -116,5 +122,27 @@ public class JwtProvider {
             return e.getClaims();
         }
     }
+
+    // 로그아웃 처리
+    public void logout(String token) {
+        long expiration = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration()
+                .getTime();
+        long now = new Date().getTime();
+        redisTemplate.opsForValue().set(token, "logout", expiration - now, TimeUnit.MILLISECONDS);
+    }
+    public Date getIssuedAt(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getIssuedAt();
+    }
+
 
 }

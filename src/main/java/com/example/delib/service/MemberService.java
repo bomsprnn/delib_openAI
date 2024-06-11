@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,7 @@ public class MemberService {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
+
     @Transactional
     public JwtToken login(String username, String password) {
         if (!username.contains("@"))
@@ -37,7 +39,7 @@ public class MemberService {
         if (password.length() < 8)
             throw new IllegalArgumentException("비밀번호는 8자 이상이어야 합니다.");
 
-        memberRepository.findByUsername(username).orElseThrow(()->new IllegalStateException("존재하지 않는 회원입니다."));
+        memberRepository.findByUsername(username).orElseThrow(() -> new IllegalStateException("존재하지 않는 회원입니다."));
 
         //Optional<Member> member = memberRepository.findByUsername(username);
         // 1. Login ID/PW 를 기반으로 Authentication 객체 생성
@@ -77,5 +79,20 @@ public class MemberService {
         return MemberDto.toDto(memberRepository.save(signUpDto.toEntity(encodedPassword, roles)));
     }
 
+    @Transactional
+    public void logout(String token) {
+        jwtProvider.logout(token);
+    }
 
+    @Transactional
+    public void logoutAllDevices(String username) {
+        Optional<Member> memberOpt = memberRepository.findByUsername(username);
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+            member.setLastLogout(new Date());
+            memberRepository.save(member);
+        } else {
+            throw new IllegalStateException("존재하지 않는 회원입니다.");
+        }
+    }
 }

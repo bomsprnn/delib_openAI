@@ -32,12 +32,13 @@ public class SecurityConfig {
                 )
                 // 조건별로 요청 허용/제한 설정
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/join", "/login", "/test2","/test","/tsts","/letter","/question").permitAll()
+                        .requestMatchers("/join", "/login", "/test2", "/test", "/tsts", "/letter", "/question").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user/**").hasRole("USER")
                         .anyRequest().denyAll())
                 // JWT 인증을 위하여 직접 구현한 필터를 UsernamePasswordAuthenticationFilter 전에 실행
-        .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class).build();
+                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -45,6 +46,4 @@ public class SecurityConfig {
         // BCrypt Encoder 사용
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
-
-
 }
