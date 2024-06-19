@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,6 +95,17 @@ public class MemberService {
             memberRepository.save(member);
         } else {
             throw new IllegalStateException("존재하지 않는 회원입니다.");
+        }
+    }
+    public String getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            log.info("현재 사용자: {}", ((UserDetails) authentication.getPrincipal()).getUsername());
+            log.info("현재 사용자 role: {}", ((UserDetails) authentication.getPrincipal()).getAuthorities());
+
+            return ((UserDetails) authentication.getPrincipal()).getUsername();
+        } else {
+            throw new IllegalStateException("인증된 사용자를 찾을 수 없습니다.");
         }
     }
 }
